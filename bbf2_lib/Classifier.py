@@ -3,11 +3,19 @@ import pandas
 import pandas as pd
 import pyod
 import sklearn
-#from autogluon.tabular import TabularPredictor
-from confens.classifiers.ConfidenceBoosting import ConfidenceBoosting
-from logitboost import LogitBoost
-from pyod.models.abod import ABOD
 from pyod.models.base import BaseDetector
+from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import LabelEncoder
+from sklearn.svm import SVC
+from sklearn.utils import check_X_y
+from sklearn.utils.multiclass import unique_labels
+from sklearn.utils.validation import check_is_fitted, check_array
+from xgboost import XGBClassifier
+
+
+from confens.classifiers.ConfidenceBoosting import ConfidenceBoosting
+from pyod.models.abod import ABOD
 from pyod.models.cblof import CBLOF
 from pyod.models.cof import COF
 from pyod.models.copod import COPOD
@@ -21,25 +29,15 @@ from pyod.models.lof import LOF
 from pyod.models.mcd import MCD
 from pyod.models.ocsvm import OCSVM
 from pyod.models.pca import PCA
-#from pyod.models.so_gaal import SO_GAAL
-#from pyod.models.vae import VAE
-#from pytorch_tabnet.tab_model import TabNetClassifier
-from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.ensemble import RandomForestClassifier, BaggingClassifier, GradientBoostingClassifier
-from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB, MultinomialNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import MinMaxScaler, LabelEncoder
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier, ExtraTreeClassifier
-from sklearn.utils import check_X_y
-from sklearn.utils.multiclass import unique_labels
-from sklearn.utils.validation import check_is_fitted, check_array
 from xgboost import XGBClassifier
-
-from sprout.utils.general_utils import current_ms
 
 
 # ---------------------------------- SUPPORT METHODS ------------------------------------
@@ -58,61 +56,31 @@ def get_feature_importance(clf):
         return clf.feature_importances_
 
 
-def build_classifier(classifier, x_train, y_train, x_test, y_test, verbose=True):
+
+def choose_classifiers(clf_names, contamination=None, verbose=False) -> list:
     """
-    Builds and Exercises a Classifier
-    :param classifier: classifier object
-    :param x_train: train features
-    :param y_train: train label
-    :param x_test: test features
-    :param y_test: test label
-    :param verbose: True if there should be console output
-    :return: probabilities and predictions of the classifier
+    Returns classifiers object from string descriptions as list
+    :param clf_names: list of string descriptions of classifiers
+    :param contamination: used for unsupervised classifiers, fraction of anomalies in train set
+    :param verbose: true if debug information has to be shown
+    :return: a classifier object
     """
-    if verbose:
-        print("\nBuilding classifier: " + get_classifier_name(classifier))
-
-    if isinstance(x_train, pandas.DataFrame):
-        train_data = x_train.to_numpy()
-    else:
-        train_data = x_train
-
-    # Fitting classifier
-    start_ms = current_ms()
-    if isinstance(classifier, pyod.models.base.BaseDetector):
-        classifier.fit(train_data)
-    else:
-        classifier.fit(train_data, y_train)
-    train_ms = current_ms()
-
-    # Test features have to be a numpy array
-    if isinstance(x_test, pandas.DataFrame):
-        test_data = x_test.to_numpy()
-    else:
-        test_data = x_test
-
-    # Predicting labels
-    y_pred = classifier.predict(test_data)
-    test_time = current_ms() - train_ms
-
-    # Predicting probabilities
-    y_proba = classifier.predict_proba(test_data)
-    if isinstance(y_proba, pd.DataFrame):
-        y_proba = y_proba.to_numpy()
-
-    if verbose:
-        print(get_classifier_name(classifier) + " train/test in " + str(train_ms - start_ms) + "/" +
-              str(test_time) + " ms with Accuracy: " + str(sklearn.metrics.accuracy_score(y_test, y_pred)))
-
-    return y_proba, y_pred
+    clfs = []
+    if not isinstance(clf_names, list):
+        clf_names = [clf_names]
+    for clf in clf_names:
+        clf_obj = choose_classifier(clf, contamination)
+        if clf_obj is not None:
+            clfs.append(clf_obj)
+            if verbose:
+                print("\tAdded classifier: %s" % get_classifier_name(clf_obj))
+    return clfs
 
 
-def choose_classifier(clf_name, y_label, metric, contamination=None):
+def choose_classifier(clf_name, contamination=None):
     """
     Returns classifier object from string description
     :param clf_name: string description of the classifier
-    :param y_label: name of label column
-    :param metric: target metric/loss for training
     :param contamination: used for unsupervised classifiers, fration of anomalies in train set
     :return: a classifier object
     """
@@ -136,12 +104,6 @@ def choose_classifier(clf_name, y_label, metric, contamination=None):
         return LogisticReg()
     elif clf_name in {"RF", "RandomForest"}:
         return RandomForestClassifier(n_estimators=10)
-    elif clf_name in {"LB", "LogBoost", "LogitBoost"}:
-        return LogitBoost(n_estimators=10)
-    # elif clf_name in {"TabNet", "Tabnet", "TN"}:
-    #     return TabNet(metric="auc", verbose=0)
-    # elif clf_name in {"FAI", "FastAI", "FASTAI", "fastai"}:
-    #     return FastAI(label_name=y_label, metric=metric)
     elif clf_name in {"GBC", "GradientBoosting"}:
         return GradientBoostingClassifier(n_estimators=50)
     elif clf_name in {"CONFBOOST", "CBOOST", "CBoost"}:
@@ -174,40 +136,8 @@ def choose_classifier(clf_name, y_label, metric, contamination=None):
         return UnsupervisedClassifier(IForest(contamination=contamination, n_estimators=10))
     elif clf_name in {"LODA"}:
         return UnsupervisedClassifier(LODA(contamination=contamination, n_bins=100))
-    # elif clf_name in {"VAE"}:
-    #     return UnsupervisedClassifier(VAE(contamination=contamination))
-    # elif clf_name in {"SO_GAAL"}:
-    #     return UnsupervisedClassifier(SO_GAAL(contamination=contamination))
     else:
-        pass
-
-
-def auto_bag_rate(n_features):
-    """
-    Method used to automatically devise a rate to include features in bagging
-    :param n_features: number of features in the dataset
-    :return: the rate of features to bag
-    """
-    if n_features < 20:
-        bag_rate = 0.8
-    elif n_features < 50:
-        bag_rate = 0.7
-    elif n_features < 100:
-        bag_rate = 0.6
-    else:
-        bag_rate = 0.5
-    return bag_rate
-
-
-def predict_uns_proba(uns_clf, test_features):
-    proba = uns_clf.predict_proba(test_features)
-    pred = numpy.argmax(proba, axis=1)
-    for i in range(len(pred)):
-        min_p = min(proba[i])
-        max_p = max(proba[i])
-        proba[i][pred[i]] = max_p
-        proba[i][1 - pred[i]] = min_p
-    return proba
+        return None
 
 
 class Classifier(BaseEstimator, ClassifierMixin):
@@ -308,7 +238,6 @@ class Classifier(BaseEstimator, ClassifierMixin):
             setattr(self.clf, parameter, value)
         return self
 
-
 class UnsupervisedClassifier(Classifier, BaseDetector):
     """
     Wrapper for unsupervised classifiers belonging to the library PYOD
@@ -389,135 +318,6 @@ class UnsupervisedClassifier(Classifier, BaseDetector):
         """
         return self.clf.__class__.__name__
 
-
-# class TabNet(Classifier):
-#     """
-#     Wrapper for the torch.tabnet algorithm
-#     """
-#
-#     def __init__(self, metric=None, verbose=0):
-#         Classifier.__init__(self, TabNetClassifier(verbose=verbose))
-#         self.metric = metric
-#         self.verbose = verbose
-#
-#     def fit(self, x_train, y_train):
-#         if isinstance(x_train, pandas.DataFrame):
-#             x_train = x_train.to_numpy()
-#         if self.metric is None:
-#             self.clf.fit(X_train=x_train, y_train=y_train, max_epochs=40, batch_size=1024, eval_metric=['auc'],
-#                          patience=2)
-#         else:
-#             self.clf.fit(X_train=x_train, y_train=y_train, max_epochs=40, batch_size=1024,
-#                          eval_metric=[self.metric], patience=2)
-#         self.classes_ = numpy.unique(y_train)
-#         self.feature_importances_ = self.get_feature_importances()
-#
-#     def get_feature_importances(self):
-#         return self.clf.feature_importances_
-#
-#     def predict(self, x_test):
-#         if isinstance(x_test, pandas.DataFrame):
-#             x_test = x_test.to_numpy()
-#         return self.clf.predict(x_test)
-#
-#     def predict_proba(self, x_test):
-#         if isinstance(x_test, pandas.DataFrame):
-#             x_test = x_test.to_numpy()
-#         return self.clf.predict_proba(x_test)
-#
-#     def classifier_name(self):
-#         return "TabNet"
-#
-#
-# class AutoGluon(Classifier):
-#     """
-#     Wrapper for classifiers taken from Gluon library
-#     clf_name options are
-#     ‘GBM’ (LightGBM)
-#     ‘CAT’ (CatBoost)
-#     ‘XGB’ (XGBoost)
-#     ‘RF’ (random forest)
-#     ‘XT’ (extremely randomized trees)
-#     ‘KNN’ (k-nearest neighbors)
-#     ‘LR’ (linear regression)
-#     ‘NN’ (neural network with MXNet backend)
-#     ‘FASTAI’ (neural network with FastAI backend)
-#     """
-#
-#     def __init__(self, label_name, clf_name, metric, verbose=0):
-#         Classifier.__init__(self, TabularPredictor(label=label_name, eval_metric=metric, verbosity=verbose))
-#         self.label_name = label_name
-#         self.clf_name = clf_name
-#         self.metric = metric
-#         self.verbose = verbose
-#         self.feature_importance = []
-#         self.feature_names = None
-#
-#     def fit(self, x_train, y_train):
-#         path = './AutogluonModels/' + str(current_ms())
-#         self.classes_ = numpy.unique(y_train)
-#         self.clf = TabularPredictor(label=self.label_name, eval_metric=self.metric,
-#                                     path=path, verbosity=self.verbose)
-#         if self.feature_names is None:
-#             self.feature_names = ['col' + str(i) for i in range(0, x_train.shape[1])]
-#         df = pd.DataFrame(data=x_train.copy(), columns=self.feature_names)
-#         df[self.label_name] = y_train
-#         self.clf.fit(train_data=df, hyperparameters={self.clf_name: {}})
-#         self.feature_importances_ = self.clf.feature_importance(df)
-#
-#         self.trained = True
-#
-#     def get_feature_importances(self):
-#         return self.feature_importances_
-#
-#     def predict(self, x_test):
-#         df = pd.DataFrame(data=x_test, columns=self.feature_names)
-#         return self.clf.predict(df, as_pandas=False)
-#
-#     def predict_proba(self, x_test):
-#         df = pd.DataFrame(data=x_test, columns=self.feature_names)
-#         return self.clf.predict_proba(df, as_pandas=False)
-#
-#     def classifier_name(self):
-#         return "AutoGluon"
-#
-#
-# class FastAI(AutoGluon):
-#     """
-#     Wrapper for the gluon.FastAI algorithm
-#     """
-#
-#     def __init__(self, label_name, metric, verbose=0):
-#         AutoGluon.__init__(self, label_name, "FASTAI", metric, verbose)
-#
-#     def classifier_name(self):
-#         return "FastAI"
-#
-#
-# class GBM(AutoGluon):
-#     """
-#     Wrapper for the gluon.LightGBM algorithm
-#     """
-#
-#     def __init__(self, label_name, metric):
-#         AutoGluon.__init__(self, label_name, "GBM", metric)
-#
-#     def classifier_name(self):
-#         return "GBM"
-#
-#
-# class MXNet(AutoGluon):
-#     """
-#     Wrapper for the gluon.MXNet algorithm (to be debugged)
-#     """
-#
-#     def __init__(self, label_name):
-#         AutoGluon.__init__(self, label_name, "NN")
-#
-#     def classifier_name(self):
-#         return "MXNet"
-
-
 class LogisticReg(Classifier):
     """
     Wrapper for the sklearn.LogisticRegression algorithm
@@ -533,7 +333,6 @@ class LogisticReg(Classifier):
 
     def classifier_name(self):
         return "LogisticRegression"
-
 
 class XGB(Classifier):
     """
@@ -566,17 +365,3 @@ class XGB(Classifier):
 
     def classifier_name(self):
         return "XGBClassifier"
-
-
-class SupportVectorMachine(Classifier):
-    """
-    Wrapper for the sklearn.SVC algorithm
-    """
-
-    def __init__(self, kernel, degree):
-        Classifier.__init__(self, SVC(kernel=kernel, degree=degree, probability=True, max_iter=10000))
-        self.kernel = kernel
-        self.degree = degree
-
-    def classifier_name(self):
-        return "SupportVectorMachine(kernel=" + str(self.kernel) + ")"

@@ -21,6 +21,7 @@ Other features:
 - fileID: str name of the file, constant across a single file
 - wordcount
 - name: name derived from CAN flow, seems always constant
+
 Overall, features used to predict the 'Steer_Warning' feature are:
 - CHECKSUM
 - COUNTER
@@ -40,3 +41,9 @@ The code is available in the repository. Steps to execute it:
 - 4.1) a .cfg file containing the setup of the analysis
 - 4.2) a [file](debug/learn_anomaly_detectors.py), which reads the CFG file above, learns and tests prediction models for the 'Steer_Warning' variable
 
+## State of the Tests
+Tommaso -> at the moment I am finalizing some tests. TODOList includes
+- saving learned models to file so that they could be loaded and used without needing re-training
+- making an additional script that takes a new CSV file and a saved model and provides you with predictions of that model for each row of that file
+- check stability
+- making a report of the "anoalies I find"

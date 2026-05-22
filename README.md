@@ -5,12 +5,15 @@ Collaboration between SPINDOX, UNIFI, Resiltech
 ## Data
 Data is fetched from the commaCarSegments - commaai dataset (here -> https://huggingface.co/datasets/commaai/commaCarSegments)
 This test is conducted using CSV files extracted using the SUBARU_OUTBACK tag
-ZIP Containing the full CSV list can be downloaded at
+ZIP Containing the full CSV list can be downloaded at the link [here](https://drive.google.com/file/d/1gzZaWqarOESrZeEKsWBCfta9E42tqvhz/view?usp=sharing)
 
 
 ## How to run the Code
 The code is available in the repository. Steps to execute it:
 1) clone the repo
 2) download the ZIP above and unzip it in the root folder of the repo you downloaded
-3) create your new Python venv. For testing, Python 3.12 was used, package list available [here](pip_freeze.txt) 
+3) create your new Python venv. For testing, Python 3.12 was used, package list available [here](pip_freeze.txt)
+4) take a look at the [debug](debug) folder, where 2 things are super important:
+   4.1) a .cfg file containing the setup of the analysis
+   4.2) a [file](debug/)
 

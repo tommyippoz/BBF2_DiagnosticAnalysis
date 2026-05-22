@@ -54,7 +54,7 @@ if __name__ == "__main__":
     test_sequences = warn_df[split_index:]
     contamination = numpy.average([numpy.average(x["Y"]) for x in train_sequences])
 
-    # Setting Up Analysis - Selection of Classifiers
+    # Setting Up Analysis Selection of Classifiers
     algs = None
     if params["supervised"]:
         algs = choose_classifiers(params["sup_algs"], contamination=None, verbose=params["verbose"])

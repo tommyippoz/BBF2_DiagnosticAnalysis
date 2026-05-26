@@ -1,20 +1,41 @@
 import copy
+import os.path
 
+import joblib
 import numpy
 import pandas
-import sklearn
-from sklearn.metrics import confusion_matrix
 
 from bbf2_lib.Classifier import get_classifier_name
 from debug.test_unsupervised import current_ms
 
+# -------------------- UTILITY FUNCTIONS ----------------------------
+def load(models_folder, use_timeseries, supervised, algs, verbose):
+    clf_list = []
+    for alg in algs:
+        clf_name = get_classifier_name(alg)
+        filename = os.path.join(models_folder,
+                                "timeseries" if use_timeseries else "point",
+                                clf_name,
+                                "model.joblib")
+        if os.path.exists(filename):
+            clf_model = joblib.load(filename)
+            if verbose:
+                print("\tLoaded '%s' model" % get_classifier_name(clf_model))
+            clf_list.append(clf_model)
+
+    if not use_timeseries:
+        predictor = PointWiseAnomalyPredictor(clf_list, supervised, models_folder)
+    else:
+        predictor = TimeSeriesAnomalyPredictor(clf_list, supervised, models_folder)
+
+    return predictor
 
 class AnomalyPredictor:
     """
     Class to manage the analysis of CSV files and predict label
     """
 
-    def __init__(self, clf_list: list, supervised: bool = True, models_folder: str = None):
+    def __init__(self, clf_list: list, supervised: bool = True, models_folder: str = "./models"):
         """
         Constructor
         :param clf_list: list of classifiers to be compares
@@ -24,12 +45,10 @@ class AnomalyPredictor:
         self.clf_list = clf_list
         self.supervised = supervised
         self.models_folder = models_folder
-        self.metrics = {}
 
-    def fit(self, sequences: list, store_models: bool = True, verbose:bool=True):
+    def fit(self, sequences: list, verbose:bool=True):
         """
         Trains classifiers according to the setup
-        :param store_models: True if fitted models have to be stored as files
         :param verbose: True if debug information to be shown
         :param sequences: CSV data, to be partitioned for fitting
         :return:
@@ -47,9 +66,6 @@ class AnomalyPredictor:
             end_ms = current_ms()
             if verbose:
                 print("\tTraining of classifier %s ended: %d ms" % (get_classifier_name(clf), (end_ms - start_ms)))
-        if store_models:
-            for clf in self.clf_list:
-                self.store_classifier(clf)
         return self
 
     def extract_data(self, sequences: list):
@@ -70,26 +86,20 @@ class AnomalyPredictor:
         """
         x_test = self.extract_data(sequences)
         results = []
+        predictions = []
         for clf in self.clf_list:
             start_ms = current_ms()
             pred_label = clf.predict(x_test)
             end_ms = current_ms()
+            predictions.append(pred_label)
             results.append({"clf": get_classifier_name(clf),
+                            "model": clf,
                             "predictions": pred_label,
                             "predict_time": end_ms - start_ms,
                             "predict_time_per_item": (end_ms - start_ms)/len(x_test)})
             if verbose:
                 print("\tClassifier %s exercised in %d ms" % (results[-1]["clf"], results[-1]["predict_time"]))
-        return results
-
-    def compute_metrics(self, test_label, predicted_labels):
-        # Computing metrics to understand how good an algorithm is
-        accuracy = sklearn.metrics.accuracy_score(test_label, predicted_labels)
-        mcc = sklearn.metrics.matthews_corrcoef(test_label, predicted_labels)
-        tn, fp, fn, tp = confusion_matrix(test_label, predicted_labels).ravel()
-
-    def store_classifier(self, clf):
-        pass
+        return results, predictions
 
 
 class PointWiseAnomalyPredictor(AnomalyPredictor):
@@ -151,4 +161,3 @@ class TimeSeriesAnomalyPredictor(AnomalyPredictor):
             new_f = new_f.fillna(0)
 
         return new_f
-

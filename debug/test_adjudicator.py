@@ -1,4 +1,4 @@
-import copy
+import os
 import os
 import random
 import time
@@ -6,31 +6,15 @@ import time
 import numpy
 import pandas
 import sklearn
-from confens.classifiers.ConfidenceBagging import ConfidenceBagging
 from confens.classifiers.ConfidenceBoosting import ConfidenceBoosting
 from pandas import read_csv
-from pyod.models.abod import ABOD
 from pyod.models.cblof import CBLOF
-from pyod.models.copod import COPOD
-from pyod.models.ecod import ECOD
-from pyod.models.feature_bagging import FeatureBagging
-from pyod.models.gmm import GMM
-from pyod.models.hbos import HBOS
 from pyod.models.iforest import IForest
-from pyod.models.inne import INNE
-from pyod.models.kde import KDE
 from pyod.models.knn import KNN
-from pyod.models.kpca import KPCA
-from pyod.models.lmdd import LMDD
-from pyod.models.lof import LOF
 from pyod.models.mcd import MCD
-from pyod.models.ocsvm import OCSVM
 from pyod.models.pca import PCA
-from pyod.models.qmcd import QMCD
-from pyod.models.sampling import Sampling
-from pyod.models.suod import SUOD
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.metrics import confusion_matrix
 from sklearn.tree import DecisionTreeClassifier, ExtraTreeClassifier
 
 # Sets random seed to increase repeatability

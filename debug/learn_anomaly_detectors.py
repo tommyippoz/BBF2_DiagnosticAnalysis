@@ -6,7 +6,8 @@ import pandas
 
 from bbf2_lib.AnomalyPredictor import PointWiseAnomalyPredictor, TimeSeriesAnomalyPredictor
 from bbf2_lib.Classifier import choose_classifiers
-from bbf2_lib.utils import read_config, test_models, print_scores
+from bbf2_lib.predictor_utils import test_models, store_models
+from bbf2_lib.utils import read_config, print_scores
 
 if __name__ == "__main__":
     """
@@ -79,12 +80,15 @@ if __name__ == "__main__":
     predictor.fit(sequences=train_sequences, verbose=params["verbose"])
 
     # Testing Models
-    test_results = test_models(predictor=predictor, test_sequences=test_sequences, verbose=params["verbose"])
+    test_results, _ = test_models(predictor=predictor, test_sequences=test_sequences, verbose=params["verbose"])
     if params["print_scores"]:
         print_scores(to_print=test_results, analysis_tag="test", output_folder=params["output_folder"], filename=params["scores_filename"])
 
+    if params["store_models"]:
+        store_models(test_results, params["models_folder"], params["use_timeseries"])
+
     # Test Models using data with no warnings
-    test_results = test_models(predictor=predictor, test_sequences=no_warn_df, verbose=params["verbose"])
+    test_results, _ = test_models(predictor=predictor, test_sequences=no_warn_df, verbose=params["verbose"])
     if params["print_scores"]:
         print_scores(to_print=test_results, analysis_tag="test_nowarn", output_folder=params["output_folder"],
                      filename=params["scores_filename"])

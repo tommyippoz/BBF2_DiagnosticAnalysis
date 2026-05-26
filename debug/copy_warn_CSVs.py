@@ -22,7 +22,7 @@ if __name__ == "__main__":
     # Reads params file
     params = read_config("debug_cfg.cfg")
     if params is None:
-        print("Cannot read CFG file. Please provide a debug_cfg.cfg file, same folder of this script.")
+        print("Cannot read CFG file. Please provide debug_cfg.cfg file, same folder of this script.")
         exit(1)
 
     # Sets random seed to increase repeatability

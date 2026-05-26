@@ -22,7 +22,7 @@ def score_metrics(pred_y, test_y, test_sequences=None,
     :return: a dictionary
     """
     stats = {"point":{}, "timeseries":{}}
-    c_mat = confusion_matrix(test_y, pred_y)
+    c_mat = confusion_matrix(test_y, pred_y).ravel()
     stats['point']['tn'] = stats['point']['fp'] = stats['point']['fn'] = stats['point']['tp'] = 0
     stats['point']['tn'] = c_mat[0]
     if len(c_mat) > 1:
@@ -105,8 +105,8 @@ def test_models(predictor: AnomalyPredictor, test_sequences:list, verbose:bool =
                               "model": result["model"],
                               "predict_time": result["predict_time"],
                               "predict_time_per_item": result["predict_time_per_item"],
-                              "use_timeseries":isinstance(predictor, TimeSeriesAnomalyPredictor),
-                              "supervised": predictor.supervised}
+                              "use_timeseries": result["use_timeseries"],
+                              "supervised": result["is_supervised"]}
         metrics_list.append(metrics)
         if verbose:
             print("Classifier %s predicted with accuracy %.4f" % (result["clf"], metrics["point"]["accuracy"]))

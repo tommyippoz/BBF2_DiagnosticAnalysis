@@ -45,30 +45,22 @@ if __name__ == "__main__":
             print("Error while processing file %s" % file)
     print("Found %d test files" % len(test_sequences))
 
-    # Setting Up Analysis Selection of Classifiers
-    algs = None
-    if params["supervised"]:
-        algs = choose_classifiers(params["sup_algs"], contamination=None, verbose=False)
-    else:
-        algs = choose_classifiers(params["uns_algs"], contamination=0.1, verbose=False)
-    if params["verbose"]:
-        print("Loading existing classifiers for %s analysis" % ("SUPERVISED" if params["supervised"] else "UNSUPERVISED"))
-
     # Choosing the type of Analysis
-    predictor = AnomalyPredictor.load(params["models_folder"], params["verbose"])
+    predictor = AnomalyPredictor.load_all(params["models_folder"], params["verbose"])
 
     # Testing Models
     for csv_data in test_sequences:
         test_csv = [csv_data]
         test_results, predictions = test_models(predictor=predictor, test_sequences=test_csv, verbose=params["verbose"])
-        print_scores(to_print=test_results, analysis_tag="test",
+        print_scores(to_print=test_results, analysis_tag="test_all",
                      output_folder=params["out_dataframes_folder"], filename=params["scores_filename"])
         if params["print_predictions"]:
             # Prep CSV
             to_print = copy.deepcopy(csv_data["X"])
             to_print[params["label_column"]] = csv_data["Y"]
             for i in range(0, len(predictor.clf_list)):
-                to_print["[PRED]" + get_classifier_name(predictor.clf_list[i])] = predictions[i]
+                to_print["[PRED" + ("_TS" if predictor.is_ts_list[i] else "_P") + "]" +
+                         get_classifier_name(predictor.clf_list[i])] = predictions[i]
             to_print.to_csv(os.path.join(params["out_dataframes_folder"].replace('"', ''), csv_data["filename"].replace(".csv", "_PREDICTED.csv")), index=False)
 
 

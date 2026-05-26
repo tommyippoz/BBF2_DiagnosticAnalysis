@@ -1,15 +1,26 @@
 import copy
 import os.path
+from pathlib import Path
 
 import joblib
 import numpy
 import pandas
+from pyod.models.base import BaseDetector
 
 from bbf2_lib.Classifier import get_classifier_name
 from debug.test_unsupervised import current_ms
 
 # -------------------- UTILITY FUNCTIONS ----------------------------
 def load(models_folder, use_timeseries, supervised, algs, verbose):
+    """
+    To be used to create an AnomalyPredictor from an existing block of models
+    :param models_folder: folder to read
+    :param use_timeseries: Truye if uses timeseries
+    :param supervised: True if supervised ALgorithms
+    :param algs: list of algorithms
+    :param verbose: True if debug information to be shown
+    :return:
+    """
     clf_list = []
     for alg in algs:
         clf_name = get_classifier_name(alg)
@@ -27,6 +38,40 @@ def load(models_folder, use_timeseries, supervised, algs, verbose):
         predictor = PointWiseAnomalyPredictor(clf_list, supervised, models_folder)
     else:
         predictor = TimeSeriesAnomalyPredictor(clf_list, supervised, models_folder)
+
+    return predictor
+
+def load_all(models_folder:str, verbose:bool = True):
+    """
+    To be used to create an AnomalyPredictor from an existing block of models
+    :param models_folder: folder to read
+    :param verbose: True if debug information to be shown
+    :return:
+    """
+    t_clf_list = []
+    if os.path.exists(os.path.join(models_folder, "timeseries")):
+        for sub in os.listdir(os.path.join(models_folder, "timeseries")):
+            if os.path.isdir(os.path.join(models_folder, "timeseries", sub)):
+                filename = os.path.join(models_folder, "timeseries", sub, "model.joblib")
+                if os.path.exists(filename):
+                    clf_model = joblib.load(filename)
+                    if verbose:
+                        print("\tLoaded '%s' model" % get_classifier_name(clf_model))
+                    t_clf_list.append(clf_model)
+    p_clf_list = []
+    if os.path.exists(os.path.join(models_folder, "point")):
+        for sub in os.listdir(os.path.join(models_folder, "point")):
+            if os.path.isdir(os.path.join(models_folder, "point", sub)):
+                filename = os.path.join(models_folder, "point", sub, "model.joblib")
+                if os.path.exists(filename):
+                    clf_model = joblib.load(filename)
+                    if verbose:
+                        print("\tLoaded '%s' model" % get_classifier_name(clf_model))
+                    p_clf_list.append(clf_model)
+
+    predictor = AnomalyPredictorBunch([PointWiseAnomalyPredictor(p_clf_list, True, models_folder),
+                                       TimeSeriesAnomalyPredictor(t_clf_list, True, models_folder)],
+                                      True, models_folder)
 
     return predictor
 
@@ -94,6 +139,8 @@ class AnomalyPredictor:
             predictions.append(pred_label)
             results.append({"clf": get_classifier_name(clf),
                             "model": clf,
+                            "use_timeseries": isinstance(self, TimeSeriesAnomalyPredictor),
+                            "is_supervised": not isinstance(clf, BaseDetector),
                             "predictions": pred_label,
                             "predict_time": end_ms - start_ms,
                             "predict_time_per_item": (end_ms - start_ms)/len(x_test)})
@@ -161,3 +208,38 @@ class TimeSeriesAnomalyPredictor(AnomalyPredictor):
             new_f = new_f.fillna(0)
 
         return new_f
+
+class AnomalyPredictorBunch(AnomalyPredictor):
+
+    def __init__(self, ap_list: list, supervised: bool = True, models_folder: str = None):
+        super().__init__(None, supervised, models_folder)
+        self.ap_list = ap_list
+        self.clf_list = [x for ap in ap_list for x in ap.clf_list]
+        self.is_ts_list = [isinstance(ap, TimeSeriesAnomalyPredictor) for ap in ap_list for x in ap.clf_list]
+
+    def fit(self, sequences: list, verbose:bool=True):
+        """
+        Trains classifiers according to the setup
+        :param verbose: True if debug information to be shown
+        :param sequences: CSV data, to be partitioned for fitting
+        :return:
+        """
+        for ap in self.ap_list:
+            ap.fit(sequences, verbose)
+        return self
+
+
+    def predict(self, sequences: list, verbose:bool = True) -> list:
+        """
+        Predicts using classifiers according to the setup
+        :param verbose: True if debug information to be shown
+        :param sequences: CSV data, to be partitioned for testing
+        :return: list of dictionaries containing clf_name, predictions, time needed to predict
+        """
+        results = []
+        predictions = []
+        for ap in self.ap_list:
+            ap_r, ap_p = ap.predict(sequences,  verbose)
+            results = results + ap_r
+            predictions = predictions + ap_p
+        return results, predictions

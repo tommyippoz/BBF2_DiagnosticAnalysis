@@ -47,7 +47,7 @@ The code is available in the repository. Steps to execute it:
 ### Exercising Prediction Models
 Once step 4) is executed and models are stored in the filesystem, they could be loaded at will for analyses.
 
-5) The [file](debug/score_allalgs_CSVs.py.py) allows for predicting the target (Steer_Warning) variable for one or more CSVs stored in a folder, using all the available models resulting from different step 4) iterations. The predictions are printed as additional columns to the CSVs and stored in a dedicated output folder for further analysis
+5) The [file](debug/score_allalgs_CSVs.py) allows for predicting the target (Steer_Warning) variable for one or more CSVs stored in a folder, using all the available models resulting from different step 4) iterations. The predictions are printed as additional columns to the CSVs and stored in a dedicated output folder for further analysis
 
 ## State of the Tests
 Tommaso -> at the moment I am finalizing some tests. TODOList includes

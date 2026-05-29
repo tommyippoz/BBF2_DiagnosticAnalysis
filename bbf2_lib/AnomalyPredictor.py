@@ -135,6 +135,7 @@ class AnomalyPredictor:
         for clf in self.clf_list:
             start_ms = current_ms()
             pred_label = clf.predict(x_test)
+            pred_proba = clf.predict_proba(x_test)
             end_ms = current_ms()
             predictions.append(pred_label)
             results.append({"clf": get_classifier_name(clf),

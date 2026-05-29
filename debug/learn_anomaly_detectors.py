@@ -88,7 +88,7 @@ if __name__ == "__main__":
         store_models(test_results, params["models_folder"], params["use_timeseries"])
 
     # Test Models using data with no warnings
-    test_results, _ = test_models(predictor=predictor, test_sequences=no_warn_df, verbose=params["verbose"])
-    if params["print_scores"]:
-        print_scores(to_print=test_results, analysis_tag="test_nowarn", output_folder=params["output_folder"],
-                     filename=params["scores_filename"])
+    # test_results, _ = test_models(predictor=predictor, test_sequences=no_warn_df, verbose=params["verbose"])
+    # if params["print_scores"]:
+    #     print_scores(to_print=test_results, analysis_tag="test_nowarn", output_folder=params["output_folder"],
+    #                  filename=params["scores_filename"])

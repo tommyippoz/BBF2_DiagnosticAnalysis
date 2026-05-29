@@ -79,14 +79,6 @@ def print_scores(to_print, analysis_tag:str, output_folder, filename):
                          str(result['timeseries']['tpr']['avg']) + "\n")
 
 
-def load_classifier(clf_folder, clf_tag):
-    """
-    Stores classifier model in a specific folder
-    :param clf_model: the model to store
-    :return:
-    """
-    return None, None
-
 def clear_folder(folder_path):
     """
     Used to clear an existing folder

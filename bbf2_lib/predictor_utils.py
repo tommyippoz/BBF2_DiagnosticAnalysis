@@ -109,7 +109,8 @@ def test_models(predictor: AnomalyPredictor, test_sequences:list, verbose:bool =
                               "supervised": result["is_supervised"]}
         metrics_list.append(metrics)
         if verbose:
-            print("Classifier %s predicted with accuracy %.4f" % (result["clf"], metrics["point"]["accuracy"]))
+            print("Classifier %s \tpredicted with \taccuracy %.4f and \tMCC  %.4f" %
+                  (result["clf"], metrics["point"]["accuracy"], metrics["point"]["mcc"]))
 
     return metrics_list, predictions
 

@@ -49,18 +49,20 @@ if __name__ == "__main__":
     predictor = AnomalyPredictor.load_all(params["models_folder"], params["verbose"])
 
     # Testing Models
-    for csv_data in test_sequences:
-        test_csv = [csv_data]
-        test_results, predictions = test_models(predictor=predictor, test_sequences=test_csv, verbose=params["verbose"])
-        print_scores(to_print=test_results, analysis_tag="test_all",
-                     output_folder=params["out_dataframes_folder"], filename=params["scores_filename"])
-        if params["print_predictions"]:
-            # Prep CSV
+    test_results, predictions = test_models(predictor=predictor, test_sequences=test_sequences, verbose=params["verbose"])
+    print_scores(to_print=test_results, analysis_tag="test_all",
+                 output_folder=params["out_dataframes_folder"], filename=params["scores_filename"])
+    if params["print_predictions"]:
+        start_i = 0
+        for j in range(0, len(test_sequences)):
+            csv_data = test_sequences[j]
             to_print = copy.deepcopy(csv_data["X"])
             to_print[params["label_column"]] = csv_data["Y"]
             for i in range(0, len(predictor.clf_list)):
                 to_print["[PRED" + ("_TS" if predictor.is_ts_list[i] else "_P") + "]" +
-                         get_classifier_name(predictor.clf_list[i])] = predictions[i]
-            to_print.to_csv(os.path.join(params["out_dataframes_folder"].replace('"', ''), csv_data["filename"].replace(".csv", "_PREDICTED.csv")), index=False)
-
+                         get_classifier_name(predictor.clf_list[i])] = predictions[i][start_i:start_i+len(csv_data["Y"])]
+            my_path = os.path.join(params["out_dataframes_folder"].replace('"', ''),
+                         csv_data["filename"].replace(".csv", "_PREDICTED.csv"))
+            to_print.to_csv(my_path, index=False)
+            start_i = start_i + len(csv_data["Y"])
 

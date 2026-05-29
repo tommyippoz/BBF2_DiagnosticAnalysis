@@ -1,5 +1,7 @@
 import numpy
+from confens.classifiers.ConfidenceBagging import ConfidenceBagging
 from confens.classifiers.ConfidenceBoosting import ConfidenceBoosting
+from confens.classifiers.ConfidenceEnsemble import ConfidenceEnsemble
 from pyod.models.abod import ABOD
 from pyod.models.base import BaseDetector
 from pyod.models.cblof import CBLOF
@@ -39,6 +41,8 @@ def get_classifier_name(clf):
         return clf.classifier_name()
     elif isinstance(clf, Pipeline):
         return get_classifier_name(clf.steps[1][1])
+    elif isinstance(clf, ConfidenceEnsemble):
+        return clf.__class__.__name__ + "(" + clf.classifier_name() + ")"
     else:
         return clf.__class__.__name__
 
@@ -102,6 +106,10 @@ def choose_classifier(clf_name, contamination=None):
         return GradientBoostingClassifier(n_estimators=50)
     elif clf_name in {"CONFBOOST", "CBOOST", "CBoost"}:
         return ConfidenceBoosting(n_base=20, clf=ExtraTreeClassifier())
+    elif "CBag(" in clf_name:
+        return ConfidenceBagging(n_base=10, clf=choose_classifier(clf_name.replace("CBag(", "")[:-1], contamination))
+    elif "CBoost(" in clf_name:
+        return ConfidenceBoosting(n_base=10, clf=choose_classifier(clf_name.replace("CBoost(", "")[:-1], contamination))
     elif clf_name in {"COPOD"}:
         return UnsupervisedClassifier(COPOD(contamination=contamination))
     elif clf_name in {"ECOD"}:
@@ -245,6 +253,7 @@ class UnsupervisedClassifier(Classifier, BaseDetector):
         self.clf = clf
         self.contamination = clf.contamination
         self._estimator_type = "classifier"
+        self.threshold_ = None
         self.feature_importances_ = None
         self.X_ = None
         self.y_ = None
@@ -259,6 +268,7 @@ class UnsupervisedClassifier(Classifier, BaseDetector):
         # Train clf
         self.clf.fit(X)
         self.feature_importances_ = self.compute_feature_importances()
+        self.threshold_ = self.clf.threshold_
 
         # Return the classifier
         return self

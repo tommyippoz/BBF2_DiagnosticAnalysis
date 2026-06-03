@@ -103,6 +103,7 @@ def test_models(predictor: AnomalyPredictor, test_sequences:list, verbose:bool =
         metrics = score_metrics(result["predictions"], y_test, test_sequences)
         metrics["general"] = {"clf": result["clf"],
                               "model": result["model"],
+                              "explainers": predictor.explainers[result["clf"]] if predictor.explainers is not None and result["clf"] in predictor.explainers else {},
                               "predict_time": result["predict_time"],
                               "predict_time_per_item": result["predict_time_per_item"],
                               "use_timeseries": result["use_timeseries"],
@@ -141,10 +142,16 @@ def store_models(clf_scores: list, models_folder: str = "./models", use_timeseri
         clf_obj = joblib.load(model_file)
         if get_classifier_name(clf) == get_classifier_name(clf_obj):
             print(" %s Model stored successfully at '%s'" % (str(clf_data["general"]["clf"]), model_file))
+            explainers = clf_data["general"]["explainers"]
+            if "SHAP" in explainers:
+                exp_file = os.path.join(models_details_folder, "shap_explainer.joblib")
+                joblib.dump(explainers["SHAP"], exp_file, compress=9)
             clf_data["general"].pop('model', None)
+            clf_data["general"].pop('explainers', None)
             json_metrics = json.dumps(clf_data, cls=NpEncoder)
             with open(model_file.replace("model.joblib", "model_stats.json"), "w") as f:
                 f.write(json_metrics)
+
         else:
             print("Error while storing the model - file corrupted")
         pass

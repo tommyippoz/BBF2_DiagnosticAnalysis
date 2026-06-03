@@ -45,6 +45,8 @@ if __name__ == "__main__":
             print("Error while processing file %s" % file)
     print("Found %d test files" % len(test_sequences))
 
+    test_sequences = test_sequences[0:1]
+
     # Choosing the type of Analysis
     predictor = AnomalyPredictor.load_all(params["models_folder"], params["verbose"])
 
@@ -52,6 +54,11 @@ if __name__ == "__main__":
     test_results, predictions = test_models(predictor=predictor, test_sequences=test_sequences, verbose=params["verbose"])
     print_scores(to_print=test_results, analysis_tag="test_all",
                  output_folder=params["out_dataframes_folder"], filename=params["scores_filename"])
+
+    explanations = None
+    if params["use_shap"]:
+        explanations = predictor.explain(sequences=test_sequences)
+
     if params["print_predictions"]:
         start_i = 0
         for j in range(0, len(test_sequences)):

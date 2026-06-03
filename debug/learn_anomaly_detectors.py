@@ -68,13 +68,16 @@ if __name__ == "__main__":
     predictor = None
     if not params["use_timeseries"]:
         predictor = PointWiseAnomalyPredictor(clf_list=algs, supervised=params["supervised"],
-                                              models_folder=params["models_folder"])
+                                              models_folder=params["models_folder"],
+                                              shap_explain=params["use_shap"],
+                                              n_explanations=int(params["explanations_points"]))
     else:
         predictor = TimeSeriesAnomalyPredictor(clf_list=algs, supervised=params["supervised"],
-                                              models_folder=params["models_folder"])
+                                              models_folder=params["models_folder"],
+                                              shap_explain=params["use_shap"],
+                                              n_explanations=int(params["explanations_points"]))
     if params["verbose"]:
         print("Exercising %s analysis" % ("TIME-SERIES" if params["use_timeseries"] else "NORMAL"))
-
 
     # Fitting Models
     predictor.fit(sequences=train_sequences, verbose=params["verbose"])

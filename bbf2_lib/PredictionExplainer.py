@@ -4,15 +4,33 @@ from sklearn.pipeline import Pipeline
 
 
 class PredictionExplainer:
+    """
+    Abstract class that serves as a meta-model for prediction explainers / diagnosis
+    """
 
     def __init__(self,model):
+        """
+        Constructor of abstract class
+        :param model: the model to explain
+        """
         self.model = model
         self.explainer_obj = None
 
     def train(self, X, feature_names):
+        """
+        Trains the explainer
+        :param X: train set
+        :param feature_names: names of dataset features
+        :return:
+        """
         pass
 
-    def explain(self, X):
+    def explain(self, X) -> numpy.ndarray:
+        """
+        Explains the predictions contained in X, returns a numpy array with numeric explanations for each data point and feature
+        :param X: test set
+        :return:
+        """
         pass
 
 class SHAPExplainer(PredictionExplainer):
@@ -24,14 +42,24 @@ class SHAPExplainer(PredictionExplainer):
         super().__init__(model)
 
     def train(self, X, feature_names):
-        shap_model = self.model
-        if isinstance(shap_model, Pipeline):
-            shap_model = shap_model.steps[1][1]
+        """
+        Trains the explainer
+        :param X: train set
+        :param feature_names: names of dataset features
+        :return:
+        """
         masker = shap.maskers.Independent(data=X)
         self.explainer_obj = shap.Explainer(self.model.predict_proba, masker)
-        #self.explainer_obj = shap.Explainer(shap_model, X, feature_names=feature_names)
 
-    def explain(self, X):
+    def explain(self, X) -> numpy.ndarray:
+        """
+        Explains the predictions contained in X, returns a numpy array with numeric explanations for each data point and feature
+        :param X: test set
+        :return:
+        """
         exps = self.explainer_obj(X)
-        arr_exp = numpy.asarray(exps.abs[:, :, 0])
+        arr_exp = numpy.asarray(exps.abs[:, :, 0].values)
+        # Normalize
+        sums = arr_exp.sum(axis=1, keepdims=True)
+        arr_exp = numpy.asarray([arr_exp[i, :] / sums[i] for i in range(0, len(sums))])
         return arr_exp

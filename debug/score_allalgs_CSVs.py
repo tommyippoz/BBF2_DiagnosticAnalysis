@@ -31,6 +31,7 @@ if __name__ == "__main__":
     random_state = int(params["rng_state"])
 
     # Reading CSVs as DataFrames
+    feature_names = []
     test_sequences = []
     for file in Path(params["test_csv_folder"]).glob("*.csv"):
         try:
@@ -39,13 +40,12 @@ if __name__ == "__main__":
             label_obj = df[params["label_column"]].to_numpy()
             data_obj = df.drop(columns=params["columns_to_remove"] + [params["time_column"]] + [params["label_column"]])
             test_sequences.append({"X": data_obj, "Y": label_obj, "filename": file.name})
+            feature_names = data_obj.columns
             if bool(params["verbose"]):
                 print(f"Read CSV '{file.name}' of {len(df)} rows")
         except Exception as e:
             print("Error while processing file %s" % file)
     print("Found %d test files" % len(test_sequences))
-
-    test_sequences = test_sequences[0:1]
 
     # Choosing the type of Analysis
     predictor = AnomalyPredictor.load_all(params["models_folder"], params["verbose"])
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     print_scores(to_print=test_results, analysis_tag="test_all",
                  output_folder=params["out_dataframes_folder"], filename=params["scores_filename"])
 
-    explanations = None
+    explanations = []
     if params["use_shap"]:
         explanations = predictor.explain(sequences=test_sequences)
 
@@ -65,9 +65,17 @@ if __name__ == "__main__":
             csv_data = test_sequences[j]
             to_print = copy.deepcopy(csv_data["X"])
             to_print[params["label_column"]] = csv_data["Y"]
+            # Add Predictions
             for i in range(0, len(predictor.clf_list)):
                 to_print["[PRED" + ("_TS" if predictor.is_ts_list[i] else "_P") + "]" +
                          get_classifier_name(predictor.clf_list[i])] = predictions[i][start_i:start_i+len(csv_data["Y"])]
+            # Add Explanations
+            exp_group = explanations[j]
+            for clf_name in exp_group.keys():
+                for explainer_tag in exp_group[clf_name].keys():
+                    for i in range(0, len(feature_names)):
+                        to_print[explainer_tag + "[" + clf_name + "]@" + feature_names[i]] = exp_group[clf_name][explainer_tag][:, i]
+
             my_path = os.path.join(params["out_dataframes_folder"].replace('"', ''),
                          csv_data["filename"].replace(".csv", "_PREDICTED.csv"))
             to_print.to_csv(my_path, index=False)

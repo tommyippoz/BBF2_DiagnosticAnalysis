@@ -192,18 +192,20 @@ class AnomalyPredictor:
         :return: dict of dictionaries with key=clf_name, value=dict(key=SHAP, value=explanations)
         """
         x_test = self.extract_data(sequences)
-        explanations = {}
+        exp_dict = {}
         if verbose:
             print("\nComputing Explanations for %d items..." % x_test.shape[0])
         for clf in self.clf_list:
             clf_name = get_classifier_name(clf)
+            explanations = {}
             if "SHAP" in self.explainers[clf_name]:
                 start_ms = current_ms()
                 explanations["SHAP"] = self.explainers[clf_name]["SHAP"].explain(x_test)
                 if verbose:
                     print("\tSHAP Explanations for %s derived in %d ms" % (clf_name, current_ms() - start_ms))
+            exp_dict[clf_name] = explanations
 
-        return explanations
+        return exp_dict
 
 
 class PointWiseAnomalyPredictor(AnomalyPredictor):
@@ -309,7 +311,10 @@ class AnomalyPredictorBunch(AnomalyPredictor):
 
         """
         explanations = []
-        for ap in self.ap_list:
-            ap_e = ap.explain(sequences,  verbose)
-            explanations = explanations + ap_e
+        for test_item in sequences:
+            item_exp = {}
+            for ap in self.ap_list:
+                ap_e = ap.explain([test_item],  verbose)
+                item_exp.update(ap_e)
+            explanations.append(item_exp)
         return explanations
